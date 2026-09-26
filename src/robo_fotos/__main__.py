@@ -145,8 +145,14 @@ def cmd_sugerir_corte(args: argparse.Namespace) -> int:
     limite = args.limite or len(manifesto["fotos"])
 
     print(f"Lote {args.lote}: {len(manifesto['fotos'])} foto(s)")
+    if parametros.metodo == "fundo":
+        detalhe = f"limiar={parametros.limiar} ruido_kernel={parametros.ruido_kernel}"
+    else:
+        detalhe = (
+            f"forca_borda={parametros.forca_borda} zona_busca={parametros.zona_busca}"
+        )
     print(
-        f"Parâmetros: limiar={parametros.limiar} "
+        f"Método '{parametros.metodo}': {detalhe} "
         f"margem={parametros.margem_seguranca} "
         f"área mínima={parametros.area_minima_removida:.0%}"
     )

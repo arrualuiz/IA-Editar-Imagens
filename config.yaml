@@ -17,11 +17,35 @@ lotes:
   copiar_arquivos: true
 
 corte:
+  # Como achar a foto dentro da imagem:
+  #   bordas -> foto de foto (celular fotografando uma foto impressa no álbum).
+  #             Procura a beirada do papel, que atravessa a imagem inteira.
+  #   fundo  -> scanner de mesa, com fundo liso branco ou preto atrás da foto.
+  metodo: bordas
+
+  # --- método "bordas" ---
+  # Quanto o brilho precisa variar entre pixels vizinhos para contar como borda.
+  # Menor = mais sensível (pega bordas fracas, mas também textura do papel).
+  limiar_gradiente: 25
+  # Que fração da altura (ou largura) a borda precisa atravessar para valer.
+  # Esse é o parâmetro que separa a beirada do papel de um detalhe da foto.
+  # Maior = mais exigente = corta menos.
+  forca_borda: 0.55
+  # Cada borda é procurada só nesta fração externa da imagem. Evita confundir
+  # o meio da foto com a beirada do papel.
+  zona_busca: 0.40
+  # Junta a energia de uma borda levemente torta, que se espalha por colunas
+  # vizinhas, num pico só (em pixels).
+  suavizacao_perfil: 9
+
+  # --- método "fundo" ---
   # Quão "diferente do fundo" um pixel precisa ser para contar como foto (0-255).
   # Maior = mais exigente = corta mais. Menor = pega sombras e sujeira do scanner.
   limiar: 30
   # Tamanho do elemento morfológico que limpa o ruído da máscara (em pixels).
   ruido_kernel: 5
+
+  # --- comuns aos dois métodos ---
   # Margem de segurança: quantos pixels a mais cortar para dentro, evitando
   # deixar uma listra do fundo na borda.
   margem_seguranca: 3

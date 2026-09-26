@@ -1,16 +1,22 @@
-"""Encontra o retângulo da foto dentro do fundo do scanner.
+"""Encontra o retângulo da foto para cortar as bordas.
 
-Visão computacional clássica, sem rede neural. A ideia em quatro passos:
+Visão computacional clássica, sem rede neural. Há dois métodos, porque há dois
+tipos de material — e o certo depende de como a foto foi digitalizada.
 
-1. Olhar as margens da imagem e concluir "o fundo tem esta cor".
-2. Marcar todo pixel que é diferente dessa cor — isso é a foto.
-3. Limpar a sujeira dessa marcação (poeira do scanner, grão do papel).
-4. Pegar a maior mancha contínua e o retângulo que a envolve.
+**"bordas"** (padrão) — para foto de foto: você fotografou com o celular uma
+foto impressa, apoiada num álbum ou numa mesa. Não existe fundo uniforme, mas
+existe a beirada do papel, que é um risco atravessando a imagem inteira.
+Medimos, coluna por coluna e linha por linha, o quanto ali existe borda, e
+ficamos com os quatro picos mais internos.
 
-Por que sem rede neural? Porque o problema tem uma regra clara e visível ("o
-fundo é uniforme, a foto não é"). Rede neural serve quando você não sabe
-escrever a regra. Usar uma aqui seria mais lento, mais difícil de depurar e
-precisaria de exemplos rotulados que você ainda não tem.
+**"fundo"** — para scanner de mesa: a foto está sobre um fundo liso branco ou
+preto. Estimamos a cor desse fundo pelas margens, marcamos tudo que é diferente
+dela e pegamos a maior mancha.
+
+Por que sem rede neural? Porque o problema tem uma regra clara e visível. Rede
+neural serve quando você não sabe escrever a regra. Usar uma aqui seria mais
+lento, mais difícil de depurar e precisaria de exemplos rotulados que você
+ainda não tem.
 
 Todas as funções recebem e devolvem imagens como array NumPy em BGR, que é a
 ordem de canais que o OpenCV usa.
@@ -107,19 +113,41 @@ class ParametrosCorte:
     sem tocar no código.
     """
 
-    limiar: int = 30
-    ruido_kernel: int = 5
+    # "bordas" procura os riscos que atravessam a imagem (foto de foto, álbum).
+    # "fundo" supõe um fundo uniforme atrás da foto (scanner de mesa).
+    metodo: str = "bordas"
+
+    # --- comuns aos dois métodos ---
     margem_seguranca: int = 3
-    faixa_fundo: float = 0.03
     area_minima_removida: float = 0.03
     area_minima_conteudo: float = 0.10
     largura_maxima_analise: int = 1200
+    faixa_fundo: float = 0.03
+
+    # --- só do método "fundo" ---
+    limiar: int = 30
+    ruido_kernel: int = 5
+
+    # --- só do método "bordas" ---
+    limiar_gradiente: int = 25   # quanto o brilho precisa variar para contar como borda
+    forca_borda: float = 0.55    # fração da altura/largura que a borda precisa atravessar
+    zona_busca: float = 0.40     # procura cada borda só nos 40% externos daquele lado
+    suavizacao_perfil: int = 9   # junta a energia de uma borda levemente torta
 
     @classmethod
     def do_config(cls, cfg: Config) -> ParametrosCorte:
         bruto = cfg.corte
         padrao = cls()
         return cls(
+            metodo=str(bruto.get("metodo", padrao.metodo)),
+            limiar_gradiente=int(
+                bruto.get("limiar_gradiente", padrao.limiar_gradiente)
+            ),
+            forca_borda=float(bruto.get("forca_borda", padrao.forca_borda)),
+            zona_busca=float(bruto.get("zona_busca", padrao.zona_busca)),
+            suavizacao_perfil=int(
+                bruto.get("suavizacao_perfil", padrao.suavizacao_perfil)
+            ),
             limiar=int(bruto.get("limiar", padrao.limiar)),
             ruido_kernel=int(bruto.get("ruido_kernel", padrao.ruido_kernel)),
             margem_seguranca=int(
@@ -210,6 +238,90 @@ def retangulo_do_conteudo(mascara: np.ndarray) -> Retangulo | None:
     return Retangulo(int(x), int(y), int(largura), int(altura))
 
 
+def perfil_de_bordas(
+    imagem: np.ndarray, limiar_gradiente: int, suavizacao: int
+) -> tuple[np.ndarray, np.ndarray]:
+    """Mede, para cada coluna e cada linha, o quanto ali existe uma borda.
+
+    A borda do papel é um risco que **atravessa a imagem inteira**. Um detalhe
+    dentro da foto (o contorno de uma pessoa, a quina de um móvel) também gera
+    borda, mas só num pedacinho da altura. Então, em vez de procurar o contorno
+    do papel — que quase nunca fecha direito —, perguntamos coluna por coluna:
+    "que fração da altura desta coluna tem borda vertical?". A resposta fica
+    perto de 1.0 na borda do papel e baixa em qualquer outro lugar.
+
+    Devolve dois vetores com valores de 0 a 1: um por coluna, um por linha.
+    """
+    cinza = cv2.cvtColor(imagem, cv2.COLOR_BGR2GRAY)
+    cinza = cv2.GaussianBlur(cinza, (5, 5), 0)
+
+    # Sobel mede a variação de brilho: em x, acha bordas verticais; em y,
+    # horizontais. O valor absoluto porque não interessa claro→escuro ou o contrário.
+    gx = np.abs(cv2.Sobel(cinza, cv2.CV_32F, 1, 0, ksize=3))
+    gy = np.abs(cv2.Sobel(cinza, cv2.CV_32F, 0, 1, ksize=3))
+
+    colunas = (gx > limiar_gradiente).mean(axis=0)
+    linhas = (gy > limiar_gradiente).mean(axis=1)
+
+    if suavizacao > 1:
+        # Foto levemente torta espalha a borda por várias colunas vizinhas;
+        # suavizar junta essa energia de volta num pico só.
+        nucleo = np.ones(suavizacao) / suavizacao
+        colunas = np.convolve(colunas, nucleo, "same")
+        linhas = np.convolve(linhas, nucleo, "same")
+
+    return colunas, linhas
+
+
+def _borda_mais_interna(
+    perfil: np.ndarray, do_inicio: bool, zona: float, forca: float
+) -> int | None:
+    """Acha a borda forte mais próxima do centro, dentro da zona de busca.
+
+    Por que a mais interna e não a mais forte? Porque a borda mais forte pode
+    ser outra coisa — numa foto de álbum, a lombada metálica marca mais que o
+    papel. Pegar a mais interna erra incluindo menos, nunca decepando a foto.
+    """
+    n = len(perfil)
+    limite = max(1, int(n * zona))
+    faixa = perfil[:limite] if do_inicio else perfil[n - limite :]
+    acima = np.flatnonzero(faixa >= forca)
+    if acima.size == 0:
+        return None
+    return int(acima.max()) if do_inicio else int(n - limite + acima.min())
+
+
+def retangulo_por_bordas(
+    imagem: np.ndarray, parametros: ParametrosCorte
+) -> tuple[Retangulo, int]:
+    """Procura as quatro bordas do papel e monta o retângulo.
+
+    Cada lado é independente: se só os lados esquerdo e direito forem
+    encontrados, o de cima e o de baixo ficam no limite da imagem. Devolve
+    também quantos lados foram realmente detectados — zero significa que a foto
+    provavelmente preenche o quadro inteiro e não há nada para cortar.
+    """
+    p = parametros
+    altura, largura = imagem.shape[:2]
+    colunas, linhas = perfil_de_bordas(imagem, p.limiar_gradiente, p.suavizacao_perfil)
+
+    esquerda = _borda_mais_interna(colunas, True, p.zona_busca, p.forca_borda)
+    direita = _borda_mais_interna(colunas, False, p.zona_busca, p.forca_borda)
+    topo = _borda_mais_interna(linhas, True, p.zona_busca, p.forca_borda)
+    base = _borda_mais_interna(linhas, False, p.zona_busca, p.forca_borda)
+
+    lados = sum(lado is not None for lado in (esquerda, direita, topo, base))
+
+    x = esquerda if esquerda is not None else 0
+    y = topo if topo is not None else 0
+    x2 = direita if direita is not None else largura
+    y2 = base if base is not None else altura
+
+    if x2 - x < 1 or y2 - y < 1:
+        return Retangulo(0, 0, largura, altura), 0
+    return Retangulo(x, y, x2 - x, y2 - y), lados
+
+
 def sugerir_corte(
     imagem: np.ndarray, parametros: ParametrosCorte | None = None
 ) -> ResultadoCorte:
@@ -229,8 +341,7 @@ def sugerir_corte(
         return sem_corte("imagem vazia")
 
     # A análise roda numa versão reduzida: fica mais rápido e, principalmente,
-    # faz o mesmo `limiar` e o mesmo `ruido_kernel` significarem a mesma coisa
-    # em fotos de tamanhos diferentes.
+    # faz os limiares significarem a mesma coisa em fotos de tamanhos diferentes.
     escala = 1.0
     analise = imagem
     if p.largura_maxima_analise > 0 and inteira.largura > p.largura_maxima_analise:
@@ -241,13 +352,23 @@ def sugerir_corte(
             interpolation=cv2.INTER_AREA,
         )
 
+    # A cor do fundo é sempre calculada: o método "fundo" depende dela, e no
+    # método "bordas" ela ainda é uma informação útil no debug.
     fundo = cor_do_fundo(analise, p.faixa_fundo)
-    mascara = mascara_do_conteudo(analise, fundo, p.limiar, p.ruido_kernel)
-    achado = retangulo_do_conteudo(mascara)
     cor = tuple(int(c) for c in fundo[:3])
 
+    if p.metodo == "fundo":
+        mascara = mascara_do_conteudo(analise, fundo, p.limiar, p.ruido_kernel)
+        achado = retangulo_do_conteudo(mascara)
+        falha = "nada diferente do fundo"
+    else:
+        achado, lados = retangulo_por_bordas(analise, p)
+        falha = "nenhuma borda forte encontrada"
+        if lados == 0:
+            achado = None
+
     if achado is None:
-        return ResultadoCorte(inteira, False, 0.0, cor, "nada diferente do fundo")
+        return ResultadoCorte(inteira, False, 0.0, cor, falha)
 
     if escala != 1.0:
         achado = Retangulo(

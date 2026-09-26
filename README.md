@@ -106,10 +106,25 @@ Tudo que vale ajustar está em [`config.yaml`](config.yaml), com um comentário
 explicando cada parâmetro. Os mais úteis:
 
 - `lotes.tamanho` — fotos por lote (padrão 50)
-- `corte.limiar` — o quanto um pixel precisa diferir do fundo para contar como
-  foto. Maior corta mais; menor perdoa sombras do scanner.
+- `corte.metodo` — **`bordas`** (padrão) para foto de foto, quando você
+  fotografou com o celular uma foto impressa no álbum; **`fundo`** para scanner
+  de mesa, com a foto sobre um fundo liso branco ou preto
+- `corte.forca_borda` — no método `bordas`, quanto da altura (ou largura) a
+  beirada do papel precisa atravessar. Maior corta menos.
 - `corte.area_minima_removida` — abaixo disso o robô sugere "sem corte"
 - `orientacao.confianca_baixa` — abaixo disso a foto aparece destacada na revisão
+
+### Qual método de corte usar
+
+O método `bordas` procura a beirada do papel — o risco que atravessa a imagem
+inteira. Ele funciona bem quando você enquadrou a foto impressa ao fotografar,
+que é o caso normal. Quando o papel preenche o quadro todo, ele corretamente não
+sugere corte nenhum.
+
+A limitação conhecida: se a foto impressa ficou pequena no meio de um entorno
+grande, ele pode não achar todos os quatro lados e sugerir um corte que deixa um
+pedaço de fundo. Ele erra sobrando fundo, nunca decepando a foto — e você ajusta
+na revisão.
 
 ## Testes
 
