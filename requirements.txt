@@ -1,0 +1,22 @@
+# Imagens e metadados EXIF
+Pillow>=11.0
+pillow-heif>=1.0          # suporte a HEIC (fotos de iPhone)
+
+# Visao computacional classica (corte de bordas)
+opencv-python-headless>=4.10
+numpy>=2.0
+
+# Modelo de orientacao (rede neural)
+torch>=2.6
+torchvision>=0.21
+
+# Pagina de revisao no navegador
+fastapi>=0.115
+uvicorn>=0.32
+python-multipart>=0.0.12   # o FastAPI precisa disso para receber formularios
+
+# Configuracao
+PyYAML>=6.0
+
+# Testes
+pytest>=8.0

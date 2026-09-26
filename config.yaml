@@ -1,0 +1,57 @@
+# Configuração do robô de fotos.
+# Todos os caminhos são relativos à raiz do projeto (a pasta onde está este arquivo).
+
+pastas:
+  entrada: entrada          # fotos originais — SOMENTE LEITURA, nunca alterar
+  lotes: lotes              # lote_001, lote_002... (50 fotos cada)
+  saida: saida              # fotos corrigidas, prontas para subir no Google Fotos
+  treino_base: treino_base  # fotos JÁ na orientação certa, para o treino inicial
+  dados: dados              # sugestões e correções
+  modelos: modelos          # orientacao_v001.pt, v002.pt...
+
+lotes:
+  tamanho: 50               # quantas fotos por lote
+  # Extensões tratadas como foto. O resto (vídeos, .json do Takeout) é ignorado.
+  extensoes_foto: [".jpg", ".jpeg", ".png", ".heic", ".heif"]
+  # Se true, cria cópias das fotos no lote. Se false, só anota a lista (mais rápido).
+  copiar_arquivos: true
+
+corte:
+  # Quão "diferente do fundo" um pixel precisa ser para contar como foto (0-255).
+  # Maior = mais exigente = corta mais. Menor = pega sombras e sujeira do scanner.
+  limiar: 30
+  # Tamanho do elemento morfológico que limpa o ruído da máscara (em pixels).
+  ruido_kernel: 5
+  # Margem de segurança: quantos pixels a mais cortar para dentro, evitando
+  # deixar uma listra do fundo na borda.
+  margem_seguranca: 3
+  # Largura das faixas nas margens usadas para estimar a cor do fundo (fração da imagem).
+  faixa_fundo: 0.03
+  # Só sugere corte se ele remover mais que esta fração da área. Abaixo disso = "sem corte".
+  area_minima_removida: 0.03
+
+orientacao:
+  # Rede pré-treinada usada como base para o fine-tuning.
+  arquitetura: mobilenet_v3_small
+  tamanho_imagem: 224      # a imagem é redimensionada para 224x224 antes de entrar na rede
+  epocas: 5
+  lote_treino: 32          # batch size
+  taxa_aprendizado: 0.0003
+  # Fração das correções reservada para validação fixa (nunca usada no treino).
+  fracao_validacao: 0.2
+  # Minhas correções valem mais que o treino automático, porque são os casos difíceis.
+  peso_correcoes: 3.0
+  # Abaixo desta confiança a foto aparece destacada e primeiro na revisão.
+  confianca_baixa: 0.75
+  # Usa GPU (CUDA ou Apple MPS) automaticamente se existir; senão, CPU.
+  dispositivo: auto
+
+exportar:
+  jpeg_qualidade: 95
+  # Se true e a foto só precisa girar (sem corte), gira sem recomprimir o JPEG.
+  rotacao_sem_perda: true
+
+servidor:
+  host: 127.0.0.1
+  porta: 8765
+  abrir_navegador: true

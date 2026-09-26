@@ -1,0 +1,39 @@
+# Ambiente
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+
+# Fotos e vídeos NUNCA vão para o Git (são grandes e são seus arquivos pessoais).
+# Estas regras valem em qualquer pasta do projeto, inclusive na raiz.
+*.jpg
+*.JPG
+*.jpeg
+*.JPEG
+*.png
+*.PNG
+*.heic
+*.HEIC
+*.heif
+*.mp4
+*.MP4
+*.mov
+*.MOV
+*.avi
+*.webp
+
+# Dados gerados pelo app (podem ser refeitos a qualquer momento)
+lotes/
+saida/
+dados/sugestoes/
+dados/correcoes.jsonl
+modelos/*.pt
+
+# Mantém as pastas vazias no repositório
+!**/.gitkeep
+
+.DS_Store
+Thumbs.db

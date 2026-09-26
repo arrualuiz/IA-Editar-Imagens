@@ -1,0 +1,10 @@
+# Normaliza o fim de linha: no repositório fica LF, no disco fica o do sistema.
+# Assim o projeto funciona igual no Windows e no Mac sem gerar diffs falsos.
+* text=auto eol=lf
+
+# Arquivos binários: o Git não deve mexer neles.
+*.jpg  binary
+*.jpeg binary
+*.png  binary
+*.heic binary
+*.pt   binary
