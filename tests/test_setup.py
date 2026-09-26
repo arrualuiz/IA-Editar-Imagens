@@ -42,9 +42,13 @@ def test_todos_os_comandos_estao_registrados():
 
 
 def test_comandos_futuros_avisam_e_falham(capsys):
-    """Comando ainda não implementado deve avisar em qual etapa ele chega."""
-    assert main(["dividir"]) == 1
-    assert "Etapa 1" in capsys.readouterr().out
+    """Comando ainda não implementado deve avisar em qual etapa ele chega.
+
+    Usamos um comando que não mexe em arquivo nenhum, para o teste não criar
+    lotes no projeto de verdade.
+    """
+    assert main(["exportar", "lote_001"]) == 1
+    assert "Etapa 5" in capsys.readouterr().out
 
 
 def test_config_resolve_caminhos_absolutos():

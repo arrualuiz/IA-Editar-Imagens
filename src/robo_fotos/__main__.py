@@ -86,7 +86,38 @@ def cmd_info(args: argparse.Namespace) -> int:
 
 
 def cmd_dividir(args: argparse.Namespace) -> int:
-    return _ainda_nao("dividir")
+    """Divide as fotos de entrada/ em lotes, ordenadas por data."""
+    from .lotes import criar_lotes
+
+    cfg = carregar_config()
+    if not cfg.entrada.exists():
+        print(f"A pasta de entrada não existe: {cfg.entrada}")
+        return 1
+
+    print(f"Lendo {cfg.entrada} ...")
+    try:
+        resumo = criar_lotes(cfg, tamanho=args.tamanho, refazer=args.refazer)
+    except FileExistsError as erro:
+        print(erro)
+        return 1
+
+    if not resumo:
+        print("Nenhuma foto encontrada. Coloque as fotos em entrada/ e rode de novo.")
+        print(f"Formatos aceitos: {', '.join(sorted(cfg.extensoes_foto))}")
+        return 1
+
+    total = sum(r["total"] for r in resumo)
+    print(f"\n{total} foto(s) em {len(resumo)} lote(s):\n")
+    print(f"  {'lote':<12} {'fotos':>5}  período")
+    for r in resumo:
+        de = r["primeira_data"].strftime("%d/%m/%Y")
+        ate = r["ultima_data"].strftime("%d/%m/%Y")
+        periodo = de if de == ate else f"{de} a {ate}"
+        print(f"  {r['lote']:<12} {r['total']:>5}  {periodo}")
+
+    print(f"\nAs cópias estão em {cfg.lotes}")
+    print(f"Próximo passo: python -m robo_fotos sugerir {resumo[0]['lote']}")
+    return 0
 
 
 def cmd_sugerir_corte(args: argparse.Namespace) -> int:
