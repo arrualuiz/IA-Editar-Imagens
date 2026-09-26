@@ -29,6 +29,12 @@ corte:
   faixa_fundo: 0.03
   # Só sugere corte se ele remover mais que esta fração da área. Abaixo disso = "sem corte".
   area_minima_removida: 0.03
+  # Rede de segurança: se o retângulo encontrado for menor que esta fração da
+  # imagem, é quase certo que o robô se perdeu. Nesse caso ele não corta nada.
+  area_minima_conteudo: 0.10
+  # A análise roda numa versão reduzida da foto (mais rápido, e faz o `limiar`
+  # significar a mesma coisa em fotos de tamanhos diferentes). 0 = não reduzir.
+  largura_maxima_analise: 1200
 
 orientacao:
   # Rede pré-treinada usada como base para o fine-tuning.

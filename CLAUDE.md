@@ -144,7 +144,7 @@ robo-fotos/
 
 - [x] Etapa 0 — Setup
 - [x] Etapa 1 — Lotes
-- [ ] Etapa 2 — Corte
+- [x] Etapa 2 — Corte
 - [ ] Etapa 3 — Orientação v1
 - [ ] Etapa 4 — Página de revisão
 - [ ] Etapa 5 — Exportar

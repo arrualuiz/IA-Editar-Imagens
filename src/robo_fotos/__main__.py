@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from pathlib import Path
 
 from . import __version__
 from .config import carregar_config
@@ -121,7 +122,84 @@ def cmd_dividir(args: argparse.Namespace) -> int:
 
 
 def cmd_sugerir_corte(args: argparse.Namespace) -> int:
-    return _ainda_nao("sugerir-corte")
+    """Calcula o corte de um lote e grava imagens de debug para você conferir."""
+    from .corte import (
+        ParametrosCorte,
+        abrir_como_bgr,
+        desenhar_debug,
+        salvar_bgr,
+        sugerir_corte,
+    )
+    from .lotes import carregar_manifesto
+
+    cfg = carregar_config()
+    try:
+        manifesto = carregar_manifesto(cfg, args.lote)
+    except FileNotFoundError as erro:
+        print(erro)
+        return 1
+
+    parametros = ParametrosCorte.do_config(cfg)
+    pasta_lote = cfg.lotes / args.lote
+    pasta_debug = cfg.dados / "debug_corte" / args.lote
+    limite = args.limite or len(manifesto["fotos"])
+
+    print(f"Lote {args.lote}: {len(manifesto['fotos'])} foto(s)")
+    print(
+        f"Parâmetros: limiar={parametros.limiar} "
+        f"margem={parametros.margem_seguranca} "
+        f"área mínima={parametros.area_minima_removida:.0%}"
+    )
+    print()
+
+    cortadas = 0
+    falhas = 0
+    resultados = []
+    for item in manifesto["fotos"][:limite]:
+        caminho = pasta_lote / item["arquivo"]
+        try:
+            imagem = abrir_como_bgr(caminho)
+        except Exception as erro:
+            print(f"  !! {item['arquivo']}: não consegui abrir ({erro})")
+            falhas += 1
+            continue
+
+        resultado = sugerir_corte(imagem, parametros)
+        resultados.append((item["arquivo"], resultado))
+        if resultado.cortar:
+            cortadas += 1
+
+        if not args.sem_debug:
+            salvar_bgr(
+                desenhar_debug(imagem, resultado),
+                pasta_debug / f"{Path(item['arquivo']).stem}.jpg",
+            )
+
+    analisadas = len(resultados)
+    if not analisadas:
+        print("Nenhuma foto pôde ser analisada.")
+        return 1
+
+    print(f"  com corte sugerido : {cortadas}")
+    print(f"  sem corte          : {analisadas - cortadas}")
+    if falhas:
+        print(f"  falhas ao abrir    : {falhas}")
+
+    # As maiores bordas primeiro: são as que valem conferir no debug.
+    com_corte = sorted(
+        (r for r in resultados if r[1].cortar),
+        key=lambda r: r[1].fracao_removida,
+        reverse=True,
+    )
+    if com_corte:
+        print("\nMaiores bordas encontradas:")
+        for nome, r in com_corte[:5]:
+            print(f"  {r.fracao_removida:>6.1%}  {nome}  -> {r.retangulo.como_lista()}")
+
+    if not args.sem_debug:
+        print(f"\nImagens de debug em {pasta_debug}")
+        print("Verde = vai cortar · Vermelho = sem corte")
+    return 0
 
 
 def cmd_sugerir(args: argparse.Namespace) -> int:
@@ -190,6 +268,14 @@ def construir_parser() -> argparse.ArgumentParser:
         "sugerir-corte", help="calcula e desenha o corte sugerido de um lote (debug)"
     )
     p.add_argument("lote", help="nome do lote, ex.: lote_001")
+    p.add_argument(
+        "--limite", type=int, default=None, help="analisa só as N primeiras fotos"
+    )
+    p.add_argument(
+        "--sem-debug",
+        action="store_true",
+        help="não gera as imagens de debug (só o resumo no terminal)",
+    )
     p.set_defaults(func=cmd_sugerir_corte)
 
     p = subs.add_parser(
