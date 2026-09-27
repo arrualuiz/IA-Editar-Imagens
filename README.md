@@ -9,7 +9,9 @@ Nenhuma foto sai do seu computador.
 
 ## Instalação
 
-Só é preciso fazer isso uma vez.
+Só é preciso fazer isso uma vez. **Montando num computador novo?** Siga o
+[`NOVO-PC.md`](NOVO-PC.md): o que instalar, versões testadas, quais pastas copiar à mão
+(as fotos não vão para o Git) e onde o projeto parou.
 
 ### Windows (PowerShell)
 
