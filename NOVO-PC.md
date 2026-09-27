@@ -96,7 +96,7 @@ O clone traz essas pastas vazias (com um `.gitkeep`). Copie do PC antigo o que i
 
 | Pasta | O que tem | No PC novo | Hoje no PC atual |
 |---|---|---|---|
-| `entrada/` | fotos originais do Google Fotos / Takeout (somente leitura) | **copiar** (ou baixar de novo do Google Fotos) | 130 fotos, ~60 MB |
+| `entrada/` | fotos originais do Google Fotos / Takeout (somente leitura) | **copiar** (ou baixar de novo do Google Fotos) | 127 fotos, ~60 MB |
 | `treino_base/` | fotos já na orientação certa, para o treino inicial | **copiar** se tiver | vazia |
 | `dados/correcoes.jsonl` | suas correções — o mais valioso, não dá para refazer | **copiar sempre** que existir | ainda não existe |
 | `modelos/*.pt` | modelos treinados | **copiar** para não treinar de novo | vazia |
@@ -117,7 +117,7 @@ tem fotos pessoais: leve por pendrive ou pelo seu Drive, **nunca pelo Git**.
 ## 4. Onde o projeto parou (27/09/2026)
 
 - [x] Etapa 0 — Setup (CLI, `config.yaml`, estrutura)
-- [x] Etapa 1 — Lotes (`dividir`: 130 fotos → `lote_001` a `lote_003`)
+- [x] Etapa 1 — Lotes (`dividir`: 127 fotos → `lote_001` a `lote_003`)
 - [x] Etapa 2 — Corte (`sugerir-corte`, métodos `bordas` e `fundo`)
 - [ ] **Etapa 3 — Orientação v1 ← próxima.** `orientacao.py` e `treino.py` ainda são
   esqueletos. Antes de começar, coloque algumas centenas de fotos certas em `treino_base/`.
