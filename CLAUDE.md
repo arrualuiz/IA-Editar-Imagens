@@ -140,6 +140,78 @@ robo-fotos/
 - Código simples e legível é melhor que código esperto.
 - Ao concluir uma etapa, **atualize a seção "Progresso" abaixo**.
 
+## Decisões tomadas durante a implementação
+
+Coisas descobertas ao construir que **não** estavam no plano original acima. Quem
+retomar o projeto (pessoa ou Claude) deve ler esta seção antes de mexer no código.
+
+### O acervo é foto de foto, não scan
+
+Confirmado olhando as fotos reais: são fotos tiradas com o celular de fotos
+impressas, folheando um álbum. Não existe o "fundo de scanner" que a seção de corte
+acima supõe.
+
+Por isso o corte tem **dois métodos**, escolhidos em `config.yaml` (`corte.metodo`):
+
+- **`bordas`** (o padrão) — procura a beirada do papel: mede, coluna a coluna e
+  linha a linha, que fração da altura (ou largura) tem borda forte. A beirada do
+  papel atravessa a imagem inteira; um detalhe dentro da foto, não. Pega a borda
+  mais **interna** acima do limiar, não a mais forte, porque numa foto de álbum a
+  lombada metálica marca mais que o papel.
+- **`fundo`** — é o método descrito na seção "Corte de bordas" acima (cor do fundo
+  pela mediana das margens, máscara, morfologia, maior contorno). Continua
+  disponível e testado, para o caso de aparecerem scans de verdade.
+
+O método `fundo` aplicado a foto de foto chegou a propor remover 75% da área,
+decepando a família e deixando só o chão. Foi o que motivou o método `bordas`.
+
+### Validar sempre nas fotos reais, não só nos sintéticos
+
+Aconteceu três vezes neste projeto de a intuição apontar para um lado e a medição
+para outro:
+
+- A hipótese de "a região removida não parece o fundo" era o **inverso** do real.
+- Um teto de 60% na área removida quebrou 5 testes com razão: escanear uma foto
+  10×15 numa mesa A4 remove legitimamente ~75%.
+- Trocar a média por dilatação no perfil de bordas melhorou os sintéticos e
+  **piorou** as fotos reais.
+
+Regra prática: antes de mudar o corte, rode `sugerir-corte lote_001` e olhe as
+imagens em `dados/debug_corte/`.
+
+Isso vale também para os fixtures de teste. Ruído pixel a pixel serve para o método
+`fundo`, mas gera borda em todo lugar e não representa foto nenhuma — o método
+`bordas` precisa de fixture com conteúdo liso e desfoque óptico, como qualquer foto
+de celular.
+
+### O EXIF já resolve quase toda a orientação deste acervo
+
+Das 127 fotos em `entrada/`, 125 têm a tag EXIF Orientation: 95 com valor 6 (girar
+90°), 3 com valor 3 (180°) e 27 já certas. Como a regra é obedecer ao EXIF quando
+ele existe, a rede neural da Etapa 3 só decide sobre 2 fotos deste conjunto. Não
+espere que a acurácia medida aqui diga muita coisa.
+
+### Commits
+
+As mensagens de commit não levam linha de co-autoria nem qualquer atribuição ao
+Claude. O autor é só o arrualuiz.
+
+### Acréscimos à estrutura de pastas
+
+Além do que está desenhado acima, existem: `pyproject.toml` (faz
+`python -m robo_fotos` funcionar de qualquer pasta), `src/robo_fotos/config.py`
+(lê o YAML e resolve os caminhos, para nenhum outro módulo precisar saber onde as
+pastas ficam) e `NOVO-PC.md` (como montar o projeto numa máquina nova).
+
+Cada lote ganha um `_lote.json` com o caminho original de cada foto — é por ele que
+a Etapa 5 vai achar o arquivo original para copiar o EXIF.
+
+### Detalhe que já causou bug
+
+Não use `cv2.imread` / `cv2.imwrite`: falham com acento ou caractere não-ASCII no
+caminho no Windows e não abrem HEIC. Use `abrir_como_bgr` e `salvar_bgr` do
+`corte.py`, que passam pelo Pillow.
+
 ## Progresso
 
 - [x] Etapa 0 — Setup

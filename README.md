@@ -7,6 +7,14 @@ a cada lote.
 
 Nenhuma foto sai do seu computador.
 
+> **Estado em 27/09/2026:** Etapas 0, 1 e 2 prontas (setup, divisão em lotes e corte
+> de bordas), 58 testes passando. A próxima é a **Etapa 3 — Orientação**, e os
+> módulos `orientacao.py` e `treino.py` ainda são esqueletos. Os comandos `sugerir`,
+> `revisar`, `exportar` e `treinar` avisam em qual etapa chegam.
+>
+> Montando numa máquina nova (Linux, Mac ou Windows)? Vá direto para o
+> [`NOVO-PC.md`](NOVO-PC.md).
+
 ## Instalação
 
 Só é preciso fazer isso uma vez. **Montando num computador novo?** Siga o
